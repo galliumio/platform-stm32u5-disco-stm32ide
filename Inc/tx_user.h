@@ -287,8 +287,16 @@
 
 /* ST CMSIS-RTOS2 ThreadX wrapper (cmsis_os2.c) */
 
-#define RTOS2_BYTE_POOL_STACK_SIZE              (3 * 1024)
-#define RTOS2_BYTE_POOL_HEAP_SIZE               (4 * 1024)
+// Gallium
+#define RTOS2_BYTE_POOL_STACK_SIZE              (192 * 1024)
+#define RTOS2_BYTE_POOL_HEAP_SIZE               (40 * 1024)
+/* Must match _THREADX_HEAP_SIZE in STM32U585AIIXQ_FLASH.ld */
+#define APP_THREADX_HEAP_BYTES              (256u * 1024u)
+/* cmsis_os2.c: RTOS2_INTERNAL_BYTE_POOL_SIZE per pool (stack + heap) */
+#define APP_RTOS2_POOL_OVERHEAD_BYTES       (512u)
+#if (RTOS2_BYTE_POOL_STACK_SIZE + RTOS2_BYTE_POOL_HEAP_SIZE + APP_RTOS2_POOL_OVERHEAD_BYTES) > APP_THREADX_HEAP_BYTES
+#error RTOS2 byte pools exceed APP_THREADX_HEAP_BYTES (linker _THREADX_HEAP_SIZE)
+#endif
 
 /* USER CODE BEGIN 2 */
 #define USE_DYNAMIC_MEMORY_ALLOCATION

@@ -16,9 +16,10 @@
 //        . = ALIGN(8);
 //       } >RAM_D1 AT> RAM_D1
 //  The simplest way to provide memory for ThreadX is to define a new section, see ._threadx_heap above.
-//  In the example above the ThreadX heap size is set to 64KBytes.
-//  The ._threadx_heap must be located between the .bss and the ._user_heap_stack sections in the linker script.
-//  Caution: Make sure that ThreadX does not need more than the provided heap memory (64KBytes in this example).
+// Gallium
+//  ThreadX region size is _THREADX_HEAP_SIZE in STM32U585AIIXQ_FLASH.ld (256 KiB).
+//  Libc heap is a separate band below __RAM_segment_used_end__; see sysmem.c _Heap_Limit.
+//  Pool fit vs _THREADX_HEAP_SIZE: compile-time #error in Inc/tx_user.h (not in asm).
 //  Read more in STM32CubeIDE User Guide, chapter: "Linker script".
 
 #define USE_DYNAMIC_MEMORY_ALLOCATION

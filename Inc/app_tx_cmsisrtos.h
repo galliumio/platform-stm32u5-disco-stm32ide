@@ -81,7 +81,8 @@ uint32_t App_TX_CmsisRTOS_Init(void);
 #endif
 
 #define DEFAULT_WAIT_TIME      5
-#define APP_THREAD_STACK_SIZE  2*256
+// Gallium
+#define APP_THREAD_STACK_SIZE  4096
 /* USER CODE END Private defines */
 
 /* USER CODE BEGIN 1 */

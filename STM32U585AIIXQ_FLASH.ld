@@ -39,8 +39,10 @@ ENTRY(Reset_Handler)
 _estack = ORIGIN(RAM) + LENGTH(RAM);	/* end of "RAM" Ram type memory */
 _sstack = _estack - _Min_Stack_Size;
 
-_Min_Heap_Size = 0x200 ;	/* required amount of heap  */
-_Min_Stack_Size = 0x400 ;	/* required amount of stack */
+/* Gallium — keep in sync with APP_* heap sizes in Inc/tx_user.h */
+_LIBC_HEAP_SIZE     = 0x18000;	/* 96 KiB: bounded newlib heap (_sbrk) */
+_THREADX_HEAP_SIZE  = 0x40000;	/* 256 KiB: CMSIS pools + ThreadX dynamic */
+_Min_Stack_Size     = 0x4000;	/* 16 KiB: MSP guard below _estack */
 
 /* Memories definition */
 MEMORY
@@ -145,24 +147,29 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
 
-  /* User_heap_stack section, used to check that there is enough "RAM" Ram type memory left */
-  ._user_heap_stack :
-  {
-    . = ALIGN(8);
-    PROVIDE ( end = . );
-    PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
-    . = . + _Min_Stack_Size;
-    . = ALIGN(8);
-  } >RAM
-  
+  /* Gallium */
+  /* Bounded libc heap: [_Heap_Begin, _Heap_Limit) — must not overlap ThreadX */
+  . = ALIGN(8);
+  PROVIDE ( end = . );
+  PROVIDE ( _end = . );
+  PROVIDE ( _Heap_Begin = . );
+  . = . + _LIBC_HEAP_SIZE;
+  PROVIDE ( _Heap_Limit = . );
+
   ._threadx_heap :
   {
     . = ALIGN(8);
-    __RAM_segment_used_end__ = .;
-    . = . + 64K;
+    PROVIDE ( __RAM_segment_used_end__ = . );
+    . = . + _THREADX_HEAP_SIZE;
     . = ALIGN(8);
-   } >RAM AT> RAM
+  } >RAM AT> RAM
+
+  /* MSP reserve at top of RAM (link-time overflow check; see _estack / _Min_Stack_Size) */
+  ._msp_stack_reserve :
+  {
+    . = . + _Min_Stack_Size;
+    . = ALIGN(8);
+  } >RAM
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :

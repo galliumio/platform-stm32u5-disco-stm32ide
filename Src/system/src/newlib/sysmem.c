@@ -29,44 +29,51 @@
  */
 static uint8_t *__sbrk_heap_end = NULL;
 
+// Gallium
 /**
  * @brief _sbrk() allocates memory to the newlib heap and is used by malloc
  *        and others from the C library
  *
  * @verbatim
  * ############################################################################
- * #  .data  #  .bss  #       newlib heap       #          MSP stack          #
- * #         #        #                         # Reserved by _Min_Stack_Size #
+ * #  .data  #  .bss  #   libc heap (_LIBC_HEAP_SIZE)  #  ThreadX  #  MSP   #
+ * #         #        #  [_Heap_Begin .. _Heap_Limit)   #  256 KiB  # 16 KiB #
  * ############################################################################
- * ^-- RAM start      ^-- _end                             _estack, RAM end --^
+ * ^-- RAM start      ^-- _end / _Heap_Begin            ^-- __RAM_segment_used_end__
  * @endverbatim
  *
- * This implementation starts allocating at the '_end' linker symbol
- * The '_Min_Stack_Size' linker symbol reserves a memory for the MSP stack
- * The implementation considers '_estack' linker symbol to be RAM end
- * NOTE: If the MSP stack, at any point during execution, grows larger than the
- * reserved size, please increase the '_Min_Stack_Size'.
+ * Heap growth is capped at _Heap_Limit (start of ThreadX region), not at the
+ * top of RAM. MSP still has _Min_Stack_Size reserved below _estack.
  *
  * @param incr Memory size
  * @return Pointer to allocated memory
  */
 void *_sbrk(ptrdiff_t incr)
 {
-  extern uint8_t _end; /* Symbol defined in the linker script */
-  extern uint8_t _estack; /* Symbol defined in the linker script */
-  extern uint32_t _Min_Stack_Size; /* Symbol defined in the linker script */
-  const uint32_t stack_limit = (uint32_t)&_estack - (uint32_t)&_Min_Stack_Size;
-  const uint8_t *max_heap = (uint8_t *)stack_limit;
+  extern uint8_t _end; /* Start of heap (linker) */
+  extern uint8_t _Heap_Limit; /* End of libc heap band (linker) */
+  extern uint8_t _estack; /* Top of RAM (linker) */
+  extern uint32_t _Min_Stack_Size; /* MSP guard size (linker) */
+
+  const uintptr_t heap_cap = (uintptr_t)&_Heap_Limit;
+  const uintptr_t stack_cap =
+      (uintptr_t)&_estack - (uintptr_t)&_Min_Stack_Size;
+  uintptr_t max_heap = heap_cap;
+
+  /* Tighter of libc band and MSP guard (libc band should be lower) */
+  if (stack_cap < max_heap)
+  {
+    max_heap = stack_cap;
+  }
+
   uint8_t *prev_heap_end;
 
-  /* Initialize heap end at first call */
   if (NULL == __sbrk_heap_end)
   {
     __sbrk_heap_end = &_end;
   }
 
-  /* Protect heap from growing into the reserved MSP stack */
-  if (__sbrk_heap_end + incr > max_heap)
+  if ((uintptr_t)(__sbrk_heap_end + incr) > max_heap)
   {
     errno = ENOMEM;
     return (void *)-1;
